@@ -1,0 +1,21 @@
+# Ignore competitive programming workspace
+CPStuff/
+
+# VS Code
+.vscode/
+
+# Compiled binaries
+*.exe
+*.out
+*.o
+*.obj
+*.a
+*.dll
+
+# Debug files
+*.ilk
+*.pdb
+
+# OS files
+.DS_Store
+Thumbs.db
