@@ -10,7 +10,7 @@ struct SegTree{
         n = a.size();
         arr = a;
         tree.assign(4*n, 0);
-        tree.assign(4*n, 0);
+        lazy.assign(4*n, 0);
         build(1, 0, n-1); // note 1 indexed
     }
 
@@ -54,7 +54,7 @@ struct SegTree{
         update(2*node, low, mid, l, r, val);
         update(2*node + 1, mid+1, high, l, r, val);
 
-        tree[node]=tree[2*node] + tree[2*node + 1];
+        tree[node]=tree[2*node] + tree[2*node + 1]; // op.
     }
 
     ll query(int node, int low, int high, int l, int r){ // oper. over range [l, r]
@@ -64,7 +64,7 @@ struct SegTree{
 
         push_down(node, low, high); // flush before descent
         int mid = low + ((high-low)>>1);
-        return query(2*node, low, mid, l, r) + query(2*node +1, mid+1, high, l, r);
+        return query(2*node, low, mid, l, r) + query(2*node +1, mid+1, high, l, r); // op.
     }
 
     // wrappers
