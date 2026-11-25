@@ -4,7 +4,7 @@ using namespace std;
 struct TreeNode {
     int val, ht;
     TreeNode *left, *right;
-    TreeNode(int x) : val(x), ht(1), left(NULL), right(NULL) {} // height 1 of leaf initially !!
+    TreeNode(int x) : val(x), ht(1), left(nullptr), right(nullptr) {} // height 1 of leaf initially !!
 };
 
 int height(TreeNode *node) {
@@ -15,6 +15,10 @@ int balanceFactor(TreeNode *node) {
     return height(node->left) - height(node->right);
 }
 
+void updateHeight(TreeNode *node) {
+    node->ht = 1 + max(height(node->left), height(node->right));
+}
+
 TreeNode* rightRotate(TreeNode *y) {
     TreeNode *x = y->left;
     TreeNode *T2 = x->right;
@@ -22,8 +26,8 @@ TreeNode* rightRotate(TreeNode *y) {
     x->right = y;
     y->left = T2;
 
-    y->ht = 1 + max(height(y->left), height(y->right));
-    x->ht = 1 + max(height(x->left), height(x->right));
+    updateHeight(y); // y is now below x, so update y first
+    updateHeight(x);
     return x;
 }
 
@@ -34,9 +38,27 @@ TreeNode* leftRotate(TreeNode *x) {
     y->left = x;
     x->right = T2;
 
-    x->ht = 1 + max(height(x->left), height(x->right));
-    y->ht = 1 + max(height(y->left), height(y->right));
+    updateHeight(x);
+    updateHeight(y);
     return y;
+}
+
+// shared by insert and delete: fix height, then rotate if |bf| > 1
+TreeNode* rebalance(TreeNode *root) {
+    updateHeight(root);
+    int bf = balanceFactor(root);
+
+    if (bf > 1) {                                          // left heavy
+        if (balanceFactor(root->left) < 0)                 // LR -> turn into LL
+            root->left = leftRotate(root->left);
+        return rightRotate(root);                          // LL
+    }
+    if (bf < -1) {                                         // right heavy
+        if (balanceFactor(root->right) > 0)                // RL -> turn into RR
+            root->right = rightRotate(root->right);
+        return leftRotate(root);                           // RR
+    }
+    return root;
 }
 
 TreeNode* successor(TreeNode *node) {
@@ -55,26 +77,9 @@ TreeNode* insertNode(TreeNode *root, int x) {
     else if (x > root->val)
         root->right = insertNode(root->right, x);
     else
-        return root;
+        return root; // duplicates ignored
 
-    root->ht = 1 + max(height(root->left), height(root->right));
-
-    int bf = balanceFactor(root);
-
-    if (bf > 1 && x < root->left->val)
-        return rightRotate(root);
-    if (bf < -1 && x > root->right->val)
-        return leftRotate(root);
-    if (bf > 1 && x > root->left->val) {
-        root->left = leftRotate(root->left);
-        return rightRotate(root);
-    }
-    if (bf < -1 && x < root->right->val) {
-        root->right = rightRotate(root->right);
-        return leftRotate(root);
-    }
-
-    return root;
+    return rebalance(root);
 }
 
 TreeNode* deleteNode(TreeNode *root, int x) {
@@ -89,39 +94,26 @@ TreeNode* deleteNode(TreeNode *root, int x) {
             TreeNode *replacement = root->left ? root->left : root->right;
             delete root;
             return replacement;
-        } else {
-            TreeNode *succ = successor(root);
-            root->val = succ->val;
-            root->right = deleteNode(root->right, succ->val);
         }
+        TreeNode *succ = successor(root);
+        root->val = succ->val;
+        root->right = deleteNode(root->right, succ->val);
     }
 
-    root->ht = 1 + max(height(root->left), height(root->right));
-    int bf = balanceFactor(root);
-
-    if (bf > 1 && balanceFactor(root->left) >= 0)
-        return rightRotate(root);
-    if (bf > 1 && balanceFactor(root->left) < 0) {
-        root->left = leftRotate(root->left);
-        return rightRotate(root);
-    }
-    if (bf < -1 && balanceFactor(root->right) <= 0)
-        return leftRotate(root);
-    if (bf < -1 && balanceFactor(root->right) > 0) {
-        root->right = rightRotate(root->right);
-        return leftRotate(root);
-    }
-
-    return root;
+    return rebalance(root);
 }
 
-int heightMax(TreeNode* root) {
-    if (!root) return 0;
-    return 1 + max(height(root->left), height(root->right));
+void freeTree(TreeNode *root) {
+    if (!root) return;
+    freeTree(root->left);
+    freeTree(root->right);
+    delete root;
 }
+
+// debug print: full tree incl. nulls ("X"), O(2^h) so small trees only
 void dfs(TreeNode* root, int depth, int maxDepth, vector<vector<string>>& res) { // dfs flex, w/ null for full tree structure
     if (depth == maxDepth) return;
-    if (depth == res.size())
+    if (depth == (int)res.size())
         res.push_back({});
 
     if (!root) {
@@ -141,7 +133,7 @@ void printTree(TreeNode* root) {
 
     dfs(root, 0, h, res);
 
-    for (int i = 0; i < res.size(); i++) {
+    for (int i = 0; i < (int)res.size(); i++) {
         cout << "level " << i + 1 << ": ";
         for (auto& s : res[i])
             cout << s << " ";
@@ -150,19 +142,10 @@ void printTree(TreeNode* root) {
 }
 
 int main() {
-    TreeNode *root = NULL;
-    root = insertNode(root, 8);
-    root = insertNode(root, 9);
-    root = insertNode(root, 10);
-    root = insertNode(root, 2);
-    root = insertNode(root, 1);
-    root = insertNode(root, 5);
-    root = insertNode(root, 3);
-    root = insertNode(root, 6);
-    root = insertNode(root, 4);
-    root = insertNode(root, 7);
-    root = insertNode(root, 11);
-    root = insertNode(root, 12);
-    
+    TreeNode *root = nullptr;
+    for (int x : {8, 9, 10, 2, 1, 5, 3, 6, 4, 7, 11, 12})
+        root = insertNode(root, x);
+
     printTree(root);
+    freeTree(root);
 }
